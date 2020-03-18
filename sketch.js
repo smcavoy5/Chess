@@ -79,16 +79,17 @@ function draw() {
 
 
 
-
-
-
 let PIECE_CLICKED = 'EMPTY';
+let TURN = true;
 
 function mousePressed(){
 
 	let row = int(mouseY / SCREEN_HEIGHT * 8);
 	let col = int(mouseX / SCREEN_WIDTH * 8);
-  PIECE_CLICKED = BOARD.board[row][col];
+  if (BOARD.board[row][col] != 'EMPTY')
+    if(BOARD.board[row][col].white == TURN)
+      PIECE_CLICKED = BOARD.board[row][col];
+
 }
 
 function mouseDragged(){
@@ -111,8 +112,18 @@ function mouseReleased(){
       PIECE_CLICKED.row = row;
       PIECE_CLICKED.column = col;
       BOARD.board[row][col] = PIECE_CLICKED;
+
+      PIECE_CLICKED.hasMoved = true;
+
+      
+
+
+      //store all moves
       TABLE.moves.push(TABLE.decipher_move(PIECE_CLICKED));
-      TABLE.draw_table()
+      //TABLE.draw_table()
+
+      TURN = !TURN
+      PIECE_CLICKED = 'EMPTY'
 
     } else {
 
@@ -133,7 +144,7 @@ class Table{
     this.draw_table();
 
   }
- 
+
   decipher_move(piece) {
     let columns = ['a','b','c','d','e','f','g','h']
 
@@ -225,6 +236,7 @@ class Piece {
     this.piece_type = piece_type;
     this.white = white;
     this.image = image;
+    this.hasMoved = false;
 
   }
 
@@ -261,6 +273,9 @@ class Piece {
       else if (this.piece_type == "QUEEN"){
         return this.valid_move_for_rook(next_row, next_col) || this.valid_move_for_bishop(next_row, next_col);
       }
+      else if (this.piece_type == "KING"){
+        return this.valid_move_for_king(next_row, next_col);
+      }
 
     return false;
 
@@ -271,7 +286,7 @@ class Piece {
 
       if(this.row - next_row == 2 & this.row == 6)
           return true
-        
+
       if(this.row - next_row == 1){
 
       //standard move for PAWN; Must be a unit move forward to an empty square
@@ -360,13 +375,13 @@ class Piece {
       //if the next location is a piece of the same color
       if (BOARD.board[next_row][next_col].white == this.white)
         return false;
-      
+
     }
 
     //standard move
     if (abs(next_row - this.row) == 2 & abs(next_col - this.column) == 1)
       return true;
-    
+
     if (abs(next_col - this.column) == 2 & abs(next_row - this.row) == 1)
       return true;
   }
@@ -378,7 +393,7 @@ class Piece {
 
     if (abs(this.row - next_row) != abs(this.column - next_col))
       return false;
-    
+
 
     let row_direction = (next_row - this.row) / abs(this.row - next_row);
     let col_direction = (next_col - this.column) / abs(this.column - next_col);
@@ -394,15 +409,69 @@ class Piece {
       row_at += row_direction;
       col_at += col_direction;
     }
-   
+
    if (BOARD.board[next_row][next_col] != "EMPTY"){
 
       //if the next location is a piece of the same color
       if (BOARD.board[next_row][next_col].white == this.white)
         return false;
-      
+
     }
 
     return true;
   }
+
+  valid_move_for_king(next_row, next_col){
+    
+    if (abs(next_row - this.row) < 2 && abs(next_col - this.column) < 2) 
+      return true;
+
+    //castling (can and need to redo)
+    if (abs(next_col - this.column) == 2 && this.row == next_row && !this.hasMoved){
+      if(this.white){
+          if (next_col < this.column && BOARD.board[next_row][next_col - 2] != 'EMPTY'){
+            if(!BOARD.board[next_row][next_col - 2].hasMoved)
+              if (BOARD.board[7][3] == 'EMPTY' && BOARD.board[7][2] == 'EMPTY' && BOARD.board[7][1] == 'EMPTY'){
+                BOARD.board[next_row][next_col - 2].column = 3;
+                BOARD.board[next_row][next_col - 2].hasMoved = true;
+                BOARD.board[next_row][3] = BOARD.board[next_row][next_col - 2];
+                return true;
+              }
+          }
+          else if (BOARD.board[next_row][next_col + 1] != 'EMPTY') {
+            if(!BOARD.board[next_row][next_col + 1].hasMoved)
+              if (BOARD.board[7][5] == 'EMPTY' && BOARD.board[7][6] == 'EMPTY'){
+                BOARD.board[next_row][next_col + 1].column = 5;
+                BOARD.board[next_row][next_col + 1].hasMoved = true;
+                BOARD.board[next_row][5] = BOARD.board[next_row][next_col + 1];
+                return true;
+              }
+          }
+        }
+        else{
+          if (next_col < this.column && BOARD.board[next_row][next_col - 2] != 'EMPTY'){
+            if(!BOARD.board[next_row][next_col - 2].hasMoved)
+              if (BOARD.board[0][3] == 'EMPTY' && BOARD.board[0][2] == 'EMPTY' && BOARD.board[0][1] == 'EMPTY'){
+                BOARD.board[next_row][next_col - 2].column = 3;
+                BOARD.board[next_row][next_col - 2].hasMoved = true;
+                BOARD.board[next_row][3] = BOARD.board[next_row][next_col - 2];
+                return true;
+              }
+          }
+          else if (BOARD.board[next_row][next_col + 1] != 'EMPTY'){
+            if(!BOARD.board[next_row][next_col + 1].hasMoved)
+              if (BOARD.board[0][5] == 'EMPTY' && BOARD.board[0][6] == 'EMPTY'){
+                BOARD.board[next_row][next_col + 1].column = 5;
+                BOARD.board[next_row][next_col + 1].hasMoved = true;
+                BOARD.board[next_row][5] = BOARD.board[next_row][next_col + 1];
+                return true;
+              }
+          }
+
+        }
+    }
+
+    return false;
+  }
+
 }
