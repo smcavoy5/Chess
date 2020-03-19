@@ -79,14 +79,14 @@ function draw() {
 
 
 let PIECE_CLICKED = 'EMPTY';
-let TURN = true;
+//let TURN = true;
 
 function mousePressed(){
 
 	let row = int(mouseY / SCREEN_HEIGHT * 8);
 	let col = int(mouseX / SCREEN_WIDTH * 8);
   if (BOARD.board[row][col] != 'EMPTY')
-    if(BOARD.board[row][col].white == TURN)
+    //if(BOARD.board[row][col].white == TURN)
       PIECE_CLICKED = BOARD.board[row][col];
 
 }
@@ -120,8 +120,8 @@ function mouseReleased(){
       //TABLE.draw_table()
 
       //switch turns
-      TURN = !TURN
-      PIECE_CLICKED = 'EMPTY'
+      // TURN = !TURN
+      // PIECE_CLICKED = 'EMPTY'
     } 
 
     else 
@@ -188,7 +188,7 @@ class Board {
       }
 
       board.push(row)
-      
+
     }
     this.board = board
 
@@ -412,49 +412,23 @@ class Piece {
     if (abs(next_row - this.row) < 2 && abs(next_col - this.column) < 2) 
       return true;
 
-    //castling (can and need to redo)
-    if (abs(next_col - this.column) == 2 && this.row == next_row && !this.hasMoved){
-      if(this.white){
-          if (next_col < this.column && BOARD.board[next_row][next_col - 2] != 'EMPTY'){
-            if(!BOARD.board[next_row][next_col - 2].hasMoved)
-              if (BOARD.board[7][3] == 'EMPTY' && BOARD.board[7][2] == 'EMPTY' && BOARD.board[7][1] == 'EMPTY'){
-                BOARD.board[next_row][next_col - 2].column = 3;
-                BOARD.board[next_row][next_col - 2].hasMoved = true;
-                BOARD.board[next_row][3] = BOARD.board[next_row][next_col - 2];
-                return true;
-              }
+    if (abs(next_col - this.column) == 2 && this.row == next_row && this.timesMoved == 0){
+      let side = (next_col - this.column) / abs(next_col - this.column)
+      let piece_on = []
+      piece_on.push(this.row)
+      if (next_col < this.column)
+        piece_on.push(0)
+      else
+        piece_on.push(7)
+      let piece = BOARD.board[piece_on[0]][piece_on[1]]
+      if (piece != 'EMPTY')
+        if (piece.timesMoved == 0)
+          if (piece.valid_move_for_rook(this.row, this.column + side)){
+            piece.column = this.column + side;
+            piece.timesMoved += 1;
+            BOARD.board[next_row][this.column + side] = piece
+            return true
           }
-          else if (BOARD.board[next_row][next_col + 1] != 'EMPTY') {
-            if(!BOARD.board[next_row][next_col + 1].hasMoved)
-              if (BOARD.board[7][5] == 'EMPTY' && BOARD.board[7][6] == 'EMPTY'){
-                BOARD.board[next_row][next_col + 1].column = 5;
-                BOARD.board[next_row][next_col + 1].hasMoved = true;
-                BOARD.board[next_row][5] = BOARD.board[next_row][next_col + 1];
-                return true;
-              }
-          }
-        }
-        else{
-          if (next_col < this.column && BOARD.board[next_row][next_col - 2] != 'EMPTY'){
-            if(!BOARD.board[next_row][next_col - 2].hasMoved)
-              if (BOARD.board[0][3] == 'EMPTY' && BOARD.board[0][2] == 'EMPTY' && BOARD.board[0][1] == 'EMPTY'){
-                BOARD.board[next_row][next_col - 2].column = 3;
-                BOARD.board[next_row][next_col - 2].hasMoved = true;
-                BOARD.board[next_row][3] = BOARD.board[next_row][next_col - 2];
-                return true;
-              }
-          }
-          else if (BOARD.board[next_row][next_col + 1] != 'EMPTY'){
-            if(!BOARD.board[next_row][next_col + 1].hasMoved)
-              if (BOARD.board[0][5] == 'EMPTY' && BOARD.board[0][6] == 'EMPTY'){
-                BOARD.board[next_row][next_col + 1].column = 5;
-                BOARD.board[next_row][next_col + 1].hasMoved = true;
-                BOARD.board[next_row][5] = BOARD.board[next_row][next_col + 1];
-                return true;
-              }
-          }
-
-        }
     }
 
     return false;
