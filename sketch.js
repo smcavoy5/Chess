@@ -68,7 +68,6 @@ function setup() {
   	BOARD.board[1][column] = new Piece(1, column, "PAWN", false, BLACK_PAWN);
 	}
 
-  print(BOARD.board)
   BOARD.draw_board()
 
 }
@@ -114,22 +113,20 @@ function mouseReleased(){
       BOARD.board[row][col] = PIECE_CLICKED;
 
       PIECE_CLICKED.hasMoved = true;
-
-      
-
+      PIECE_CLICKED.timesMoved += 1;
 
       //store all moves
       TABLE.moves.push(TABLE.decipher_move(PIECE_CLICKED));
       //TABLE.draw_table()
 
+      //switch turns
       TURN = !TURN
       PIECE_CLICKED = 'EMPTY'
+    } 
 
-    } else {
-
-      //put the piece back
+    else 
       BOARD.board[PIECE_CLICKED.row][PIECE_CLICKED.column] = PIECE_CLICKED;
-    }
+
 
     BOARD.draw_board();
 
@@ -176,6 +173,8 @@ class Table{
   }
 
 }
+
+
 class Board {
 
   constructor(){
@@ -183,15 +182,21 @@ class Board {
     let board = [];
     for (let row = 0; row < 8; row++){
       let row = [];
+
       for (let col = 0; col < 8; col++) {
         row.push('EMPTY')
       }
+
       board.push(row)
+      
     }
     this.board = board
 
   }
 
+  remove(row, col){
+    this.board[row][col] = "EMPTY"
+  }
 
   draw_board() {
 
@@ -237,6 +242,8 @@ class Piece {
     this.white = white;
     this.image = image;
     this.hasMoved = false;
+    this.timesMoved = 0;
+    this.IsAttacking = []
 
   }
 
@@ -282,90 +289,70 @@ class Piece {
   }
 
   valid_move_for_pawn(next_row, next_col) {
-    if(this.white){
 
-      if(this.row - next_row == 2 & this.row == 6)
+    let direction = -1;
+
+    if(this.white)
+      direction = 1
+
+      if(this.row - next_row == 2 * direction & (this.row == 6 || this.row == 1) && next_col == this.column)
           return true
 
-      if(this.row - next_row == 1){
+      if(this.row - next_row == direction){
 
       //standard move for PAWN; Must be a unit move forward to an empty square
-        if(next_col == this.column & BOARD.board[next_row][next_col] == "EMPTY")
-          return true;
+      if(next_col == this.column & BOARD.board[next_row][next_col] == "EMPTY")
+        return true;
 
       //if Pawn tries to move one unit diagnol; Next location must have
-      //piece of opposite color (this code is same for white and black maybe combine?)
+      //piece of opposite color 
         else if (abs(next_col - this.column) == 1) {
           let piece = BOARD.board[next_row][next_col];
           if (piece != "EMPTY")
-            return !piece.white;
+            return piece.white != this.white;
+          if (piece == "EMPTY")
+            if (BOARD.board[this.row][next_col] != 'EMPTY')
+               if (BOARD.board[this.row][next_col].piece_type == 'PAWN')
+                 if (BOARD.board[this.row][next_col].timesMoved == 1){
+                    BOARD.remove(this.row, next_col)
+                    return true;
+               }
+                   
+
         }
-
-      }
-    }
-    else{
-
-      if(this.row - next_row == -2){
-        if(this.row == 1)
-          return true
-        }
-
-      if(this.row - next_row == -1){
-
-      //standard move for PAWN; Must be a unit move forward to an empty square
-        if(next_col == this.column & BOARD.board[next_row][next_col] == "EMPTY")
-          return true;
-
-      //if Pawn tries to move one unit diagnol; Next location must have
-      //piece of opposite color (this code is same for white and black maybe combine?)
-        else if (abs(next_col - this.column) == 1) {
-          let piece = BOARD.board[next_row][next_col];
-
-            if (piece != "EMPTY")
-              return piece.white;
-            }
-        }
-
-        return false;
       }
   }
+    
+
 
   valid_move_for_rook(next_row, next_col) {
-      if (next_col != this.column & next_row != this.row){
+      if (next_col != this.column & next_row != this.row)
             return false;
-      } else {
-          if (next_col < this.column){
-            for (let space = next_col + 1; space < this.column; space++){
-              if (BOARD.board[this.row][space] != "EMPTY")
-                return false;
-            }
-          } else if (next_col > this.column) {
-              for (let space = this.column; space < next_col; space++){
-                if (BOARD.board[this.row][space] != "EMPTY")
-                  return false
-            }
-          } else if (next_row < this.row) {
-              for (let space = next_row + 1; space < this.row; space++){
-                if (BOARD.board[space][this.column] != "EMPTY")
-                  return false
-            }
-          } else if (next_row > this.row) {
-              for (let space = this.row; space < next_row; space++){
-                if (BOARD.board[space][this.column] != "EMPTY")
-                  return false
-            }
-          }
 
-        if (BOARD.board[next_row][next_col] != "EMPTY"){
-          if (BOARD.board[next_row][next_col].white == this.white){
-            return false;
-         }
-         return true;
+      let col_direction = 0
+      let row_direction = 0
+      let distance = abs((this.row - next_row) + (this.column - next_col))
+
+      if(this.row == next_row)
+        col_direction = (next_col - this.column) / abs(this.column - next_col)
+      else
+        row_direction = (next_row - this.row) / abs(this.row - next_row)
+
+      
+      for (let check = 1; check < distance; check++){
+        let row_at = row_direction * check + this.row
+        let col_at = col_direction * check + this.column
+        
+        if (BOARD.board[row_at][col_at] != "EMPTY")
+          return false;
       }
-
-          return true;
-
-      }
+      
+        //if there is a piece on the next location of the same color don't move
+        if (BOARD.board[next_row][next_col] != "EMPTY")
+          return !(BOARD.board[next_row][next_col].white == this.white)
+        
+        return true;
+      
   }
 
   valid_move_for_knight(next_row, next_col) {
@@ -375,7 +362,6 @@ class Piece {
       //if the next location is a piece of the same color
       if (BOARD.board[next_row][next_col].white == this.white)
         return false;
-
     }
 
     //standard move
