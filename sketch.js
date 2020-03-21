@@ -79,14 +79,15 @@ function draw() {
 
 
 let PIECE_CLICKED = 'EMPTY';
-//let TURN = true;
+let TURN = true;
+
 
 function mousePressed(){
 
 	let row = int(mouseY / SCREEN_HEIGHT * 8);
 	let col = int(mouseX / SCREEN_WIDTH * 8);
   if (BOARD.board[row][col] != 'EMPTY')
-    //if(BOARD.board[row][col].white == TURN)
+    if(BOARD.board[row][col].white == TURN)
       PIECE_CLICKED = BOARD.board[row][col];
 
 }
@@ -107,21 +108,48 @@ function mouseReleased(){
 
     if (PIECE_CLICKED.valid_move(row, col)){
 
+
       //move the piece to the location
       PIECE_CLICKED.row = row;
       PIECE_CLICKED.column = col;
       BOARD.board[row][col] = PIECE_CLICKED;
 
-      PIECE_CLICKED.hasMoved = true;
+      if(PIECE_CLICKED.piece_type == "KING"){
+        if(PIECE_CLICKED.white)
+          BOARD.white_king = [row, col]
+        else
+          BOARD.black_king = [row, col]
+      } 
+
+      //identify if the king is in check
+      let king;
+
+      if(!TURN)
+        king = BOARD.white_king
+      else
+        king = BOARD.black_king
+
+      for(let row = 0; row < BOARD.board.length; row++){
+        for(let col = 0; col < BOARD.board.length; col++){
+          if (BOARD.board[row][col] != 'EMPTY'){
+            if (BOARD.board[row][col].white == TURN){
+              if (BOARD.board[row][col].valid_move(king[0],king[1])){
+                print("IN CHECK")
+              }
+            }
+          }
+        }
+      }
+
+      
+
       PIECE_CLICKED.timesMoved += 1;
 
-      //store all moves
-      TABLE.moves.push(TABLE.decipher_move(PIECE_CLICKED));
       //TABLE.draw_table()
 
       //switch turns
-      // TURN = !TURN
-      // PIECE_CLICKED = 'EMPTY'
+      TURN = !TURN
+      PIECE_CLICKED = 'EMPTY'
     } 
 
     else 
@@ -136,6 +164,8 @@ function mouseReleased(){
 class Table{
 
   constructor(){
+    //dont need moves
+    //fix draw_table because it is garbage
 
     this.moves = [];
     this.draw_table();
@@ -179,6 +209,9 @@ class Board {
 
   constructor(){
 
+    this.white_king = [7, 4];
+    this.black_king = [0, 4];
+
     let board = [];
     for (let row = 0; row < 8; row++){
       let row = [];
@@ -190,7 +223,7 @@ class Board {
       board.push(row)
 
     }
-    this.board = board
+    this.board = board;
 
   }
 
@@ -241,9 +274,7 @@ class Piece {
     this.piece_type = piece_type;
     this.white = white;
     this.image = image;
-    this.hasMoved = false;
     this.timesMoved = 0;
-    this.IsAttacking = []
 
   }
 
@@ -265,27 +296,25 @@ class Piece {
 
   valid_move(next_row, next_col) {
 
-      if (this.piece_type == "PAWN"){
-        return this.valid_move_for_pawn(next_row, next_col);
-      }
-      else if (this.piece_type == "ROOK"){
-        return this.valid_move_for_rook(next_row, next_col);
-      }
-      else if (this.piece_type == "KNIGHT"){
-        return this.valid_move_for_knight(next_row, next_col);
-      }
-      else if (this.piece_type == "BISHOP"){
-        return this.valid_move_for_bishop(next_row, next_col);
-      }
-      else if (this.piece_type == "QUEEN"){
-        return this.valid_move_for_rook(next_row, next_col) || this.valid_move_for_bishop(next_row, next_col);
-      }
-      else if (this.piece_type == "KING"){
-        return this.valid_move_for_king(next_row, next_col);
-      }
-
+    if (this.piece_type == "PAWN"){
+      return this.valid_move_for_pawn(next_row, next_col);
+    }
+    else if (this.piece_type == "ROOK"){
+      return this.valid_move_for_rook(next_row, next_col);
+    }
+    else if (this.piece_type == "KNIGHT"){
+      return this.valid_move_for_knight(next_row, next_col);
+    }
+    else if (this.piece_type == "BISHOP"){
+      return this.valid_move_for_bishop(next_row, next_col);
+    }
+    else if (this.piece_type == "QUEEN"){
+      return this.valid_move_for_rook(next_row, next_col) || this.valid_move_for_bishop(next_row, next_col);
+    }
+    else if (this.piece_type == "KING"){
+      return this.valid_move_for_king(next_row, next_col);
+    }
     return false;
-
   }
 
   valid_move_for_pawn(next_row, next_col) {
@@ -323,11 +352,11 @@ class Piece {
       }
   }
     
-
-
   valid_move_for_rook(next_row, next_col) {
       if (next_col != this.column & next_row != this.row)
-            return false;
+        return false;
+      if (next_col == this.column & next_row == this.row)
+        return false;
 
       let col_direction = 0
       let row_direction = 0
