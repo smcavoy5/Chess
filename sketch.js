@@ -76,19 +76,21 @@ function draw() {
 
 }
 
-
+//make PIECE_SELECTED a varible in Board and same with turn
 
 let PIECE_CLICKED = 'EMPTY';
 let TURN = true;
+let CHECK = false;
 
 
 function mousePressed(){
-
-	let row = int(mouseY / SCREEN_HEIGHT * 8);
-	let col = int(mouseX / SCREEN_WIDTH * 8);
-  if (BOARD.board[row][col] != 'EMPTY')
-    if(BOARD.board[row][col].white == TURN)
-      PIECE_CLICKED = BOARD.board[row][col];
+  if (mouseX < SCREEN_WIDTH & mouseX > 0 & mouseY < SCREEN_HEIGHT & mouseY > 0){
+  	let row = int(mouseY / SCREEN_HEIGHT * 8);
+  	let col = int(mouseX / SCREEN_WIDTH * 8);
+    if (BOARD.board[row][col] != 'EMPTY')
+      if(BOARD.board[row][col].white == TURN)
+        PIECE_CLICKED = BOARD.board[row][col];
+    }
 
 }
 
@@ -96,110 +98,148 @@ function mouseDragged(){
   if (PIECE_CLICKED != "EMPTY"){
     BOARD.board[PIECE_CLICKED.row][PIECE_CLICKED.column] = 'EMPTY'
     BOARD.draw_board();
-    PIECE_CLICKED.display_at(mouseX, mouseY);
+    if (mouseX < SCREEN_WIDTH & mouseX > 0 & mouseY < SCREEN_HEIGHT & mouseY > 0){
+      PIECE_CLICKED.display_at(mouseX, mouseY);
+    }
   }
 }
 
 function mouseReleased(){
-  if (PIECE_CLICKED != "EMPTY"){
+  if (mouseX < SCREEN_WIDTH & mouseX > 0 & mouseY < SCREEN_HEIGHT & mouseY > 0){
+    if (PIECE_CLICKED != "EMPTY"){
 
-    let row = int(mouseY / SCREEN_HEIGHT * 8);
-  	let col = int(mouseX / SCREEN_WIDTH * 8);
+      let row = int(mouseY / SCREEN_HEIGHT * 8);
+    	let col = int(mouseX / SCREEN_WIDTH * 8);
 
-    if (PIECE_CLICKED.valid_move(row, col)){
+      if (PIECE_CLICKED.valid_move(row, col)){
+
+        //store previous location
+        let prev_row = PIECE_CLICKED.row
+        let prev_col = PIECE_CLICKED.column
+        let prev_piece = BOARD.board[row][col]
+        let taken = false;
+
+        //if a piece has been taken store it
+        if(BOARD.board[row][col] != 'EMPTY')
+          taken = true;
 
 
-      //move the piece to the location
-      PIECE_CLICKED.row = row;
-      PIECE_CLICKED.column = col;
-      BOARD.board[row][col] = PIECE_CLICKED;
+        //move the piece to the location
+        PIECE_CLICKED.row = row;
+        PIECE_CLICKED.column = col;
+        BOARD.board[row][col] = PIECE_CLICKED;
 
-      if(PIECE_CLICKED.piece_type == "KING"){
-        if(PIECE_CLICKED.white)
-          BOARD.white_king = [row, col]
+        if(PIECE_CLICKED.piece_type == "KING"){
+          if(PIECE_CLICKED.white)
+            BOARD.white_king = [row, col]
         else
           BOARD.black_king = [row, col]
-      } 
+        }
 
-      //identify if the king is in check
-      let king;
+        if(checked(!TURN)){
+          PIECE_CLICKED.row = prev_row;
+          PIECE_CLICKED.column = prev_col;
+          BOARD.board[prev_row][prev_col] = PIECE_CLICKED;
+          BOARD.board[row][col] = prev_piece;
+          BOARD.draw_board()
+          return;
+        }
 
-      if(!TURN)
-        king = BOARD.white_king
+        PIECE_CLICKED.timesMoved += 1;
+
+        if (taken){
+          TABLE.moves.push(TABLE.decipher_move(PIECE_CLICKED, taken, prev_col))
+          TABLE.draw_table(TABLE.decipher_move(PIECE_CLICKED, taken, prev_col));
+        }
+        else{
+          TABLE.moves.push(TABLE.decipher_move(PIECE_CLICKED, taken, ''))
+          TABLE.draw_table(TABLE.decipher_move(PIECE_CLICKED, taken, ''));
+        }
+
+        //alternate turns
+        TURN = !TURN
+        PIECE_CLICKED = 'EMPTY'
+      }
+
       else
-        king = BOARD.black_king
+        BOARD.board[PIECE_CLICKED.row][PIECE_CLICKED.column] = PIECE_CLICKED;
+      }
+    }
+    else {
+      if(PIECE_CLICKED != 'EMPTY')
+        BOARD.board[PIECE_CLICKED.row][PIECE_CLICKED.column] = PIECE_CLICKED;
+      }
+    BOARD.draw_board();
 
-      for(let row = 0; row < BOARD.board.length; row++){
-        for(let col = 0; col < BOARD.board.length; col++){
-          if (BOARD.board[row][col] != 'EMPTY'){
-            if (BOARD.board[row][col].white == TURN){
-              if (BOARD.board[row][col].valid_move(king[0],king[1])){
-                print("IN CHECK")
-              }
-            }
+}
+
+
+function checked(white) {
+  //identify if the king is in check
+
+
+  let king;
+
+  if(!white)
+    king = BOARD.white_king
+  else
+    king = BOARD.black_king
+
+  for(let row = 0; row < BOARD.board.length; row++){
+    for(let col = 0; col < BOARD.board.length; col++){
+      if (BOARD.board[row][col] != 'EMPTY'){
+        if (BOARD.board[row][col].white == white){
+          if (BOARD.board[row][col].valid_move(king[0],king[1])){
+            return true;
           }
         }
       }
-
-      
-
-      PIECE_CLICKED.timesMoved += 1;
-
-      //TABLE.draw_table()
-
-      //switch turns
-      TURN = !TURN
-      PIECE_CLICKED = 'EMPTY'
-    } 
-
-    else 
-      BOARD.board[PIECE_CLICKED.row][PIECE_CLICKED.column] = PIECE_CLICKED;
-
-
-    BOARD.draw_board();
-
+    }
   }
+
+  return false;
+
 }
 
 class Table{
 
   constructor(){
-    //dont need moves
-    //fix draw_table because it is garbage
 
     this.moves = [];
-    this.draw_table();
 
   }
 
-  decipher_move(piece) {
+  decipher_move(piece, taken, from) {
+    let took = ''
     let columns = ['a','b','c','d','e','f','g','h']
+
+    if(taken)
+      if (piece.piece_type == "PAWN")
+        took =  str(columns[from]) + 'x'
+      else
+        took = 'x'
+
 
     let row_at = abs(piece.row - 8)
 
     if (piece.piece_type == "PAWN")
-      return str(columns[piece.column]) + str(row_at)
+      return took + str(columns[piece.column]) + str(row_at)
     if (piece.piece_type == "KNIGHT")
-      return "N" + str(columns[piece.column]) + str(row_at)
-    return piece.piece_type[0] + str(columns[piece.column]) + str(row_at)
+      return "N" + took + str(columns[piece.column]) + str(row_at)
+    return piece.piece_type[0] + took + str(columns[piece.column]) + str(row_at)
 
   }
 
-  draw_table(){
-    for (let entry = 0; entry < this.moves.length / 2; entry += 2){
-      strokeWeight(2);
+  draw_table(entry){
 
-      fill(255);
+    let row = abs(this.moves.length % 2 - 1);
+    let col = int((this.moves.length - 1) / 2);
+    fill(255);
+    rect(SCREEN_WIDTH + (TABLE_LENGTH / 2) * row, col * 20, (TABLE_LENGTH / 2), 20)
+    textSize(18);
+    fill(0);
+    text(entry, SCREEN_WIDTH + (TABLE_LENGTH / 2) * row + (TABLE_LENGTH / 4) - 10, (col + 1) * 20 - 5);
 
-      rect(SCREEN_WIDTH, 20 * entry, TABLE_LENGTH / 2, 20);
-      rect(SCREEN_WIDTH + TABLE_LENGTH / 2, 20 * entry, TABLE_LENGTH / 2, 20);
-
-      fill(52);
-      text(this.moves[entry], SCREEN_WIDTH + 10, 20 * entry + 10);
-      if (this.moves.length > entry + 1)
-        text(this.moves[entry+1], SCREEN_WIDTH + TABLE_LENGTH / 2 + 10, 20 * entry + 10);
-
-    }
   }
 
 }
@@ -209,6 +249,7 @@ class Board {
 
   constructor(){
 
+    this.gone = []
     this.white_king = [7, 4];
     this.black_king = [0, 4];
 
@@ -295,6 +336,10 @@ class Piece {
   }
 
   valid_move(next_row, next_col) {
+    if(BOARD.board[next_row][next_col] != 'EMPTY'){
+      if (BOARD.board[next_row][next_col].white == this.white)
+        return false;
+    }
 
     if (this.piece_type == "PAWN"){
       return this.valid_move_for_pawn(next_row, next_col);
@@ -334,7 +379,7 @@ class Piece {
         return true;
 
       //if Pawn tries to move one unit diagnol; Next location must have
-      //piece of opposite color 
+      //piece of opposite color
         else if (abs(next_col - this.column) == 1) {
           let piece = BOARD.board[next_row][next_col];
           if (piece != "EMPTY")
@@ -346,12 +391,12 @@ class Piece {
                     BOARD.remove(this.row, next_col)
                     return true;
                }
-                   
+
 
         }
       }
   }
-    
+
   valid_move_for_rook(next_row, next_col) {
       if (next_col != this.column & next_row != this.row)
         return false;
@@ -367,31 +412,19 @@ class Piece {
       else
         row_direction = (next_row - this.row) / abs(this.row - next_row)
 
-      
+
       for (let check = 1; check < distance; check++){
         let row_at = row_direction * check + this.row
         let col_at = col_direction * check + this.column
-        
+
         if (BOARD.board[row_at][col_at] != "EMPTY")
           return false;
       }
-      
-        //if there is a piece on the next location of the same color don't move
-        if (BOARD.board[next_row][next_col] != "EMPTY")
-          return !(BOARD.board[next_row][next_col].white == this.white)
-        
         return true;
-      
+
   }
 
   valid_move_for_knight(next_row, next_col) {
-
-    if (BOARD.board[next_row][next_col] != "EMPTY"){
-
-      //if the next location is a piece of the same color
-      if (BOARD.board[next_row][next_col].white == this.white)
-        return false;
-    }
 
     //standard move
     if (abs(next_row - this.row) == 2 & abs(next_col - this.column) == 1)
@@ -425,20 +458,12 @@ class Piece {
       col_at += col_direction;
     }
 
-   if (BOARD.board[next_row][next_col] != "EMPTY"){
-
-      //if the next location is a piece of the same color
-      if (BOARD.board[next_row][next_col].white == this.white)
-        return false;
-
-    }
-
     return true;
   }
 
   valid_move_for_king(next_row, next_col){
-    
-    if (abs(next_row - this.row) < 2 && abs(next_col - this.column) < 2) 
+
+    if (abs(next_row - this.row) < 2 && abs(next_col - this.column) < 2)
       return true;
 
     if (abs(next_col - this.column) == 2 && this.row == next_row && this.timesMoved == 0){
@@ -449,6 +474,7 @@ class Piece {
         piece_on.push(0)
       else
         piece_on.push(7)
+
       let piece = BOARD.board[piece_on[0]][piece_on[1]]
       if (piece != 'EMPTY')
         if (piece.timesMoved == 0)
