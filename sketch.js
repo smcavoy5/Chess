@@ -98,8 +98,9 @@ function mouseDragged(){
   if (PIECE_CLICKED != "EMPTY"){
     BOARD.board[PIECE_CLICKED.row][PIECE_CLICKED.column] = 'EMPTY'
     BOARD.draw_board();
-    if (mouseX < SCREEN_WIDTH & mouseX > 0 & mouseY < SCREEN_HEIGHT & mouseY > 0){
+    if (mouseX < SCREEN_WIDTH - 10 & mouseX > 0 & mouseY < SCREEN_HEIGHT & mouseY > 0){
       PIECE_CLICKED.display_at(mouseX, mouseY);
+
     }
   }
 }
@@ -113,13 +114,14 @@ function mouseReleased(){
 
       if (PIECE_CLICKED.valid_move(row, col)){
 
-        //store previous location
+        //store previous location in case the move was illegal
         let prev_row = PIECE_CLICKED.row
         let prev_col = PIECE_CLICKED.column
         let prev_piece = BOARD.board[row][col]
         let taken = false;
+        let in_check = false;
 
-        //if a piece has been taken store it
+        //if a piece has been taken then note it
         if(BOARD.board[row][col] != 'EMPTY')
           taken = true;
 
@@ -129,13 +131,15 @@ function mouseReleased(){
         PIECE_CLICKED.column = col;
         BOARD.board[row][col] = PIECE_CLICKED;
 
+        //track the moves of the kings
         if(PIECE_CLICKED.piece_type == "KING"){
           if(PIECE_CLICKED.white)
             BOARD.white_king = [row, col]
-        else
-          BOARD.black_king = [row, col]
+          else
+            BOARD.black_king = [row, col]
         }
 
+        //if the king moves into check reset the move
         if(checked(!TURN)){
           PIECE_CLICKED.row = prev_row;
           PIECE_CLICKED.column = prev_col;
@@ -145,15 +149,20 @@ function mouseReleased(){
           return;
         }
 
+        //track the number of moves a piece makes
         PIECE_CLICKED.timesMoved += 1;
 
+        if (checked(TURN))
+          in_check = true;
+
+        //if a piece is taken then note it in the table
         if (taken){
-          TABLE.moves.push(TABLE.decipher_move(PIECE_CLICKED, taken, prev_col))
-          TABLE.draw_table(TABLE.decipher_move(PIECE_CLICKED, taken, prev_col));
+          TABLE.moves.push(TABLE.decipher_move(PIECE_CLICKED, taken, prev_col, in_check))
+          TABLE.draw_table(TABLE.decipher_move(PIECE_CLICKED, taken, prev_col, in_check));
         }
         else{
-          TABLE.moves.push(TABLE.decipher_move(PIECE_CLICKED, taken, ''))
-          TABLE.draw_table(TABLE.decipher_move(PIECE_CLICKED, taken, ''));
+          TABLE.moves.push(TABLE.decipher_move(PIECE_CLICKED, taken, '', in_check))
+          TABLE.draw_table(TABLE.decipher_move(PIECE_CLICKED, taken, '', in_check));
         }
 
         //alternate turns
@@ -209,8 +218,9 @@ class Table{
 
   }
 
-  decipher_move(piece, taken, from) {
+  decipher_move(piece, taken, from, in_check) {
     let took = ''
+    let check = ''
     let columns = ['a','b','c','d','e','f','g','h']
 
     if(taken)
@@ -218,20 +228,20 @@ class Table{
         took =  str(columns[from]) + 'x'
       else
         took = 'x'
-
+    if(in_check)
+      check = '+'
 
     let row_at = abs(piece.row - 8)
 
     if (piece.piece_type == "PAWN")
-      return took + str(columns[piece.column]) + str(row_at)
+      return took + str(columns[piece.column]) + str(row_at) + check
     if (piece.piece_type == "KNIGHT")
-      return "N" + took + str(columns[piece.column]) + str(row_at)
-    return piece.piece_type[0] + took + str(columns[piece.column]) + str(row_at)
+      return "N" + took + str(columns[piece.column]) + str(row_at) + check
+    return piece.piece_type[0] + took + str(columns[piece.column]) + str(row_at) + check
 
   }
 
   draw_table(entry){
-
     let row = abs(this.moves.length % 2 - 1);
     let col = int((this.moves.length - 1) / 2);
     fill(255);
@@ -239,7 +249,6 @@ class Table{
     textSize(18);
     fill(0);
     text(entry, SCREEN_WIDTH + (TABLE_LENGTH / 2) * row + (TABLE_LENGTH / 4) - 10, (col + 1) * 20 - 5);
-
   }
 
 }
@@ -474,6 +483,21 @@ class Piece {
         piece_on.push(0)
       else
         piece_on.push(7)
+
+      for(let row = 0; row < BOARD.board.length; row++){
+        for(let col = 0; col < BOARD.board.length; col++){
+          if (BOARD.board[row][col] != 'EMPTY'){
+            if (BOARD.board[row][col].white != this.white){
+              if (BOARD.board[row][col].valid_move(this.row,this.column + side)){
+                return false;
+              }
+              if (BOARD.board[row][col].valid_move(this.row,this.column + 2 * side)){
+                return false;
+              }
+            }
+          }
+        }
+      }
 
       let piece = BOARD.board[piece_on[0]][piece_on[1]]
       if (piece != 'EMPTY')
