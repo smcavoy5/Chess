@@ -16,30 +16,34 @@ let BLACK_QUEEN;
 
 let SCREEN_WIDTH = 600;
 let SCREEN_HEIGHT = 600;
-let TABLE_LENGTH = 200;
+
+let ROWS = 8;
+let COLUMNS = 8;
+
+let box_width = SCREEN_WIDTH / COLUMNS;
+let box_height = SCREEN_HEIGHT / ROWS;
 
 function preload() {
   BLACK_BISHOP = loadImage('pieces/Chess_bishop_black.png');
   WHITE_BISHOP = loadImage('pieces/Chess_bishop_white.png');
-  BLACK_ROOK = loadImage('pieces/Chess_rook_black.png');
-  WHITE_ROOK = loadImage('pieces/Chess_rook_white.png');
-  BLACK_PAWN = loadImage('pieces/Chess_pawn_black.png');
-  WHITE_PAWN = loadImage('pieces/Chess_pawn_white.png');
-  WHITE_KING = loadImage('pieces/Chess_king_white.png');
-  BLACK_KING = loadImage('pieces/Chess_king_black.png');
+  BLACK_ROOK   = loadImage('pieces/Chess_rook_black.png');
+  WHITE_ROOK   = loadImage('pieces/Chess_rook_white.png');
+  BLACK_PAWN   = loadImage('pieces/Chess_pawn_black.png');
+  WHITE_PAWN   = loadImage('pieces/Chess_pawn_white.png');
+  WHITE_KING   = loadImage('pieces/Chess_king_white.png');
+  BLACK_KING   = loadImage('pieces/Chess_king_black.png');
   WHITE_KNIGHT = loadImage('pieces/Chess_knight_white.png');
   BLACK_KNIGHT = loadImage('pieces/Chess_knight_black.png');
-  WHITE_QUEEN = loadImage('pieces/Chess_queen_white.png');
-  BLACK_QUEEN = loadImage('pieces/Chess_queen_black.png');
+  WHITE_QUEEN  = loadImage('pieces/Chess_queen_white.png');
+  BLACK_QUEEN  = loadImage('pieces/Chess_queen_black.png');
 }
 
 function setup() {
 
-  createCanvas(SCREEN_WIDTH + TABLE_LENGTH, SCREEN_HEIGHT);
-
+  createCanvas(SCREEN_WIDTH, SCREEN_HEIGHT);
   background(150);
 
-  TABLE = new Table();
+
   BOARD = new Board();
 
   //place the bishops
@@ -75,199 +79,80 @@ function setup() {
 	}
 
   BOARD.draw_board()
-
-}
-
-function draw() {
-
 }
 
 
 
 function mousePressed(){
-  if (mouseX < SCREEN_WIDTH & mouseX > 0 & mouseY < SCREEN_HEIGHT & mouseY > 0){
 
-  	let row = int(mouseY / SCREEN_HEIGHT * 8);
-  	let col = int(mouseX / SCREEN_WIDTH * 8);
+  //if the mouse click is outside of the board then ignore it
+  if (BOARD.off_the_board(mouseX, mouseY))
+    return;
 
-    if (BOARD.board[row][col] != 'EMPTY')
-      if(BOARD.board[row][col].white ==BOARD.turn)
+    //get the row and column selected
+  	let row = int(mouseY / SCREEN_HEIGHT * ROWS);
+  	let col = int(mouseX / SCREEN_WIDTH * COLUMNS);
+
+    //if the entry is not empty and it is the players turn then set the piece that is selected
+    if (!BOARD.is_empty(row, col))
+
+      if(BOARD.on_turn(row, col))
         BOARD.piece_selected = BOARD.board[row][col];
-    }
+    
 
 }
 
 function mouseDragged(){
+  //if a piece is selected draw it as it is dragged
   if (BOARD.piece_selected != "EMPTY"){
-    BOARD.board[BOARD.piece_selected.row][BOARD.piece_selected.column] = 'EMPTY'
+    BOARD.board[BOARD.piece_selected.row][BOARD.piece_selected.column] = 'EMPTY';
     BOARD.draw_board();
-    if (mouseX < SCREEN_WIDTH - 10 & mouseX > 0 & mouseY < SCREEN_HEIGHT & mouseY > 0){
+
+    //display the piece at wherever the piece is dragged
+    if (mouseX < SCREEN_WIDTH - 10 & mouseX > 0 & mouseY < SCREEN_HEIGHT & mouseY > 0)
       BOARD.piece_selected.display_at(mouseX, mouseY);
 
-    }
+    
   }
 }
 
 function mouseReleased(){
-  if (mouseX < SCREEN_WIDTH & mouseX > 0 & mouseY < SCREEN_HEIGHT & mouseY > 0){
-    if (BOARD.piece_selected != "EMPTY"){
+  if (BOARD.off_the_board(mouseX, mouseY))
+    return
+    
+  //if a piece has been selected we have conditions to deal with
+  if (BOARD.is_holding_piece()){
 
-      let row = int(mouseY / SCREEN_HEIGHT * 8);
-    	let col = int(mouseX / SCREEN_WIDTH * 8);
+    let piece = BOARD.get_piece();
 
-      if (BOARD.piece_selected.valid_move(row, col)){
-
-        //store previous location in case the move was illegal
-        let prev_row = BOARD.piece_selected.row
-        let prev_col = BOARD.piece_selected.column
-        let prev_piece = BOARD.board[row][col]
-        let taken = false;
-        let in_check = false;
-
-        //if a piece has been taken then note it
-        if(BOARD.board[row][col] != 'EMPTY')
-          taken = true;
+    let row = int(mouseY / SCREEN_HEIGHT * ROWS);
+  	let col = int(mouseX / SCREEN_WIDTH * COLUMNS);
 
 
-        //move the piece to the location
-        BOARD.piece_selected.row = row;
-        BOARD.piece_selected.column = col;
-        BOARD.board[row][col] = BOARD.piece_selected;
-
-        //track the moves of the kings
-        if(BOARD.piece_selected.piece_type == "KING"){
-          if(BOARD.piece_selected.white)
-            BOARD.white_king = [row, col]
-          else
-            BOARD.black_king = [row, col]
-        }
-
-        //if the king moves into check reset the move
-        if(checked(!BOARD.turn)){
-          BOARD.piece_selected.row = prev_row;
-          BOARD.piece_selected.column = prev_col;
-          BOARD.board[prev_row][prev_col] = BOARD.piece_selected;
-          BOARD.board[row][col] = prev_piece;
-          BOARD.draw_board()
-          return;
-        }
-
-        //track the number of moves a piece makes
-        BOARD.piece_selected.timesMoved += 1;
-
-        if (checked(BOARD.turn))
-          in_check = true;
-
-        //if a piece is taken then note it in the table
-        if (taken){
-          TABLE.moves.push(TABLE.decipher_move(BOARD.piece_selected, taken, prev_col, in_check))
-          TABLE.draw_table(TABLE.decipher_move(BOARD.piece_selected, taken, prev_col, in_check));
-        }
-        else{
-          TABLE.moves.push(TABLE.decipher_move(BOARD.piece_selected, taken, '', in_check))
-          TABLE.draw_table(TABLE.decipher_move(BOARD.piece_selected, taken, '', in_check));
-        }
-
-        //alternate turns
-       BOARD.turn = !BOARD.turn
-       BOARD.piece_selected = 'EMPTY'
-      }
-
-      else
-        BOARD.board[BOARD.piece_selected.row][BOARD.piece_selected.column] = BOARD.piece_selected;
-      }
-    }
+    //if the row and column are valid then try and place it
+    if (piece.valid_move(row, col))
+      BOARD.move_piece(row, col);
     else {
-      if(BOARD.piece_selected != 'EMPTY')
-        BOARD.board[BOARD.piece_selected.row][BOARD.piece_selected.column] = BOARD.piece_selected;
-      }
-    BOARD.draw_board();
-
-}
-
-
-function checked(white) {
-  //identify if the king is in check
-
-  let king;
-
-  if(!white)
-    king = BOARD.white_king
-  else
-    king = BOARD.black_king
-
-  for(let row = 0; row < BOARD.board.length; row++){
-    for(let col = 0; col < BOARD.board.length; col++){
-      if (BOARD.board[row][col] != 'EMPTY'){
-        if (BOARD.board[row][col].white == white){
-          if (BOARD.board[row][col].valid_move(king[0],king[1])){
-            return true;
-          }
-        }
-      }
+      BOARD.board[piece.row][piece.column] = piece;
+      BOARD.piece_selected = "EMPTY";
     }
   }
-
-  return false;
-
+    
+  BOARD.draw_board();
 }
 
-class Table{
-
-  constructor(){
-
-    this.moves = [];
-
-  }
-
-  decipher_move(piece, taken, from, in_check) {
-    let took = ''
-    let check = ''
-    let columns = ['a','b','c','d','e','f','g','h']
-
-    if(taken)
-      if (piece.piece_type == "PAWN")
-        took =  str(columns[from]) + 'x'
-      else
-        took = 'x'
-    if(in_check)
-      check = '+'
-
-    let row_at = abs(piece.row - 8)
-
-    if (piece.piece_type == "PAWN")
-      return took + str(columns[piece.column]) + str(row_at) + check
-    if (piece.piece_type == "KNIGHT")
-      return "N" + took + str(columns[piece.column]) + str(row_at) + check
-    return piece.piece_type[0] + took + str(columns[piece.column]) + str(row_at) + check
-
-  }
-
-  draw_table(entry){
-    let row = abs(this.moves.length % 2 - 1);
-    let col = int((this.moves.length - 1) / 2);
-    fill(255);
-    rect(SCREEN_WIDTH + (TABLE_LENGTH / 2) * row, col * 20, (TABLE_LENGTH / 2), 20)
-    textSize(18);
-    fill(0);
-    text(entry, SCREEN_WIDTH + (TABLE_LENGTH / 2) * row + (TABLE_LENGTH / 4) - 10, (col + 1) * 20 - 5);
-  }
-
-}
 
 class Board {
 
   constructor(){
     this.turn = true;
     this.piece_selected = 'EMPTY';
-    this.white_king = [7, 4];
-    this.black_king = [0, 4];
 
     let board = [];
-    for (let row = 0; row < 8; row++){
+    for (let row = 0; row < ROWS; row++){
       let row = [];
 
-      for (let col = 0; col < 8; col++)
+      for (let col = 0; col < COLUMNS; col++)
         row.push('EMPTY')
 
       board.push(row)
@@ -277,8 +162,35 @@ class Board {
 
   }
 
+  move_piece(r, c) {
+    this.board[r][c] = this.piece_selected;
+    this.piece_selected.move(r, c);
+    this.turn = !this.turn;
+    this.piece_selected = "EMPTY";
+  }
+
+  get_piece() {
+    return this.piece_selected;
+  }
+
+  is_holding_piece() {
+    return this.piece_selected != "EMPTY";
+  }
+
+  off_the_board(x, y) {
+    return x > SCREEN_WIDTH || x < 0 || y > SCREEN_HEIGHT || y < 0;
+  }
+
   remove(row, col){
-    this.board[row][col] = "EMPTY"
+    this.board[row][col] = "EMPTY";
+  }
+
+  is_empty(r, c) {
+    return this.board[r][c] == "EMPTY";
+  }
+
+  on_turn(r, c) {
+    return this.turn == this.board[r][c].white;
   }
 
   draw_board() {
@@ -288,8 +200,8 @@ class Board {
     let white_square = color(255, 255, 255);
 
     let alternator = false;
-    let width = SCREEN_WIDTH / 8
-    let height = SCREEN_HEIGHT / 8
+    let width = box_width;
+    let height = box_height;
 
     for (let j = 0; j < 8; j++){
       for (let i = 0; i < 8; i++) {
@@ -324,21 +236,30 @@ class Piece {
     this.image = image;
     this.timesMoved = 0;
 
+    this.prev_row = row;
+    this.prev_col = column;
+
+  }
+
+  move(r, c) {
+    this.prev_row = this.row; 
+    this.prev_col = this.column;
+    this.row = r;
+    this.column = c;
+    this.timesMoved++;
   }
 
   display() {
-
-  	let display_row = SCREEN_HEIGHT / 8 * this.row;
-  	let display_column = SCREEN_HEIGHT / 8 * this.column;
-    image(this.image, display_column, display_row, SCREEN_WIDTH / 8, SCREEN_HEIGHT / 8);
+  	let display_row = SCREEN_HEIGHT / ROWS * this.row;
+  	let display_column = SCREEN_HEIGHT / COLUMNS * this.column;
+    image(this.image, display_column, display_row, SCREEN_WIDTH / ROWS, SCREEN_HEIGHT / COLUMNS);
 
   }
 
   display_at(x, y){
-
-    let display_x = x - (SCREEN_WIDTH / 8) / 2;
-    let display_y = y - (SCREEN_HEIGHT / 8) / 2
-    image(this.image, display_x, display_y, SCREEN_WIDTH / 8, SCREEN_HEIGHT / 8);
+    let display_x = x - (SCREEN_WIDTH / ROWS) / 2;
+    let display_y = y - (SCREEN_HEIGHT / COLUMNS) / 2
+    image(this.image, display_x, display_y, SCREEN_WIDTH / ROWS, SCREEN_HEIGHT / COLUMNS);
 
   }
 
@@ -369,17 +290,20 @@ class Piece {
     return false;
   }
 
+
   valid_move_for_pawn(next_row, next_col) {
 
     let direction = -1;
-
     if(this.white)
-      direction = 1
+      direction = 1;
 
-      if(this.row - next_row == 2 * direction & (this.row == 6 || this.row == 1) && next_col == this.column)
-          return true
+    if(this.row - next_row == 2 * direction 
+                    && this.timesMoved == 0 
+                    && next_col == this.column
+                    && BOARD.board[next_row][next_col] == "EMPTY")
+        return true;
 
-      if(this.row - next_row == direction){
+    if(this.row - next_row == direction){
 
       //standard move for PAWN; Must be a unit move forward to an empty square
       if(next_col == this.column & BOARD.board[next_row][next_col] == "EMPTY")
@@ -396,14 +320,15 @@ class Piece {
           return piece.white != this.white;
 
         //if en passant
-        if (BOARD.board[this.row][next_col] != 'EMPTY')
-           if (BOARD.board[this.row][next_col].piece_type == 'PAWN')
-             if (BOARD.board[this.row][next_col].timesMoved == 1){
+        let adj_piece = BOARD.board[this.row][next_col];
+        if (adj_piece != 'EMPTY')
+           if (adj_piece.piece_type == 'PAWN' && adj_piece.white != this.white)
+             if (adj_piece.timesMoved == 1){
                 BOARD.remove(this.row, next_col)
                 return true;
               }
         }
-      }
+    }
   }
 
   valid_move_for_rook(next_row, next_col) {
@@ -521,5 +446,6 @@ class Piece {
 
     return false;
   }
+
 
 }
